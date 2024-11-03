@@ -45,17 +45,25 @@ function handleMessage(message: string) {
     insertTextIntoChatInputBox(message);
 }
 
+function makeButton(user: User) {
+    const cachedData = getCachedData();
+    if (cachedData.length === 0) return (<></>);
+    return (
+        <Menu.MenuItem label="Quick Send Message" key="quick-send-messages" id="quick-send-messages" >
+            {cachedData.map(meow => {
+                return (<Menu.MenuItem
+                    id={meow.label.toLowerCase().replaceAll(" ", "-")}
+                    label={meow.label}
+                    action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                />);
+            })}
+        </Menu.MenuItem>
+    );
+}
+
 const UserContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: UserContextProps) => {
     if (!user) return;
-
-    getCachedData().forEach(meow => {
-        children.push(
-            <Menu.MenuItem
-                id={meow.label.toLowerCase().replaceAll(" ", "-")}
-                label={meow.label}
-                action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
-            />);
-    });
+    children.push(makeButton(user));
 };
 
 
