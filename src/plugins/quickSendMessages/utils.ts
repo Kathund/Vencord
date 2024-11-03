@@ -23,6 +23,7 @@ import { UserStore } from "@webpack/common";
 export interface SavedData {
     label: string,
     message: string,
+    group: string | null,
 }
 
 
@@ -39,6 +40,7 @@ export function clearDataFromDataStore() {
 
 export function saveDataToDataStore(data: SavedData) {
     savedDataCache = savedDataCache.filter(cacheData => cacheData !== data).filter(cacheData => cacheData.label !== data.label);
+    if ((data.group || "").length === 0) data.group = null;
     if (data.message.length > 0) savedDataCache.push(data);
     return DataStore.set(getDataKey(), savedDataCache);
 }
@@ -47,7 +49,7 @@ export function getCachedData() {
     useAwaiter(() => DataStore.get<SavedData[]>(getDataKey()).then(dataStoreData => {
         if (!dataStoreData) return;
         savedDataCache = [];
-        dataStoreData.forEach(data => savedDataCache.push({ label: data.label, message: data.message }));
+        dataStoreData.forEach(data => savedDataCache.push({ label: data.label, message: data.message, group: data.group }));
     }));
     return savedDataCache;
 }

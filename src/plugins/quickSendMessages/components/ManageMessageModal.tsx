@@ -21,18 +21,19 @@ import { Button, Forms, React, TextInput } from "@webpack/common";
 
 import { saveDataToDataStore } from "../utils";
 
-export function ManageMessageModal({ props, title, currentLabel, currentMessage, edit }: { props: ModalProps; title: string; currentLabel?: string; currentMessage?: string; edit?: boolean; }) {
+export function ManageMessageModal({ props, title, currentLabel, currentMessage, currentGroup, edit }: { props: ModalProps; title: string; currentLabel?: string; currentMessage?: string; currentGroup?: string; edit?: boolean; }) {
 
     const [label, setLabel] = React.useState(currentLabel ?? "");
     const [message, setMessage] = React.useState(currentMessage ?? "");
+    const [group, setGroup] = React.useState(currentGroup ?? "");
 
     function saveData() {
-        saveDataToDataStore({ label, message });
+        saveDataToDataStore({ label, message, group });
         props.onClose();
     }
 
     function deleteMessage() {
-        saveDataToDataStore({ label, message: "" });
+        saveDataToDataStore({ label, message: "", group });
         props.onClose();
     }
 
@@ -42,12 +43,16 @@ export function ManageMessageModal({ props, title, currentLabel, currentMessage,
                 <Forms.FormTitle tag="h4">{title}</Forms.FormTitle>
             </ModalHeader>
             <ModalContent>
-                <Forms.FormTitle tag="h5" style={{ marginTop: "10px" }}>Button Title</Forms.FormTitle>
+                <Forms.FormTitle tag="h5" style={{ marginTop: "10px" }}>Button Title (Required)</Forms.FormTitle>
                 <TextInput style={{ marginBottom: "10px" }} placeholder={"Title of the button you click"} value={label} onChange={setLabel} />
             </ModalContent>
             <ModalContent>
-                <Forms.FormTitle tag="h5" style={{ marginTop: "10px" }}>Button Message</Forms.FormTitle>
+                <Forms.FormTitle tag="h5" style={{ marginTop: "10px" }}>Button Message (Required)</Forms.FormTitle>
                 <TextInput style={{ marginBottom: "10px" }} placeholder={"Message to be sent"} value={message} onChange={setMessage} />
+            </ModalContent>
+            <ModalContent>
+                <Forms.FormTitle tag="h5" style={{ marginTop: "10px" }}>Button Group</Forms.FormTitle>
+                <TextInput style={{ marginBottom: "10px" }} placeholder={"Group to be under"} value={group} onChange={setGroup} />
             </ModalContent>
             <ModalFooter>
                 <Button color={Button.Colors.BRAND} onClick={saveData}>Save</Button>

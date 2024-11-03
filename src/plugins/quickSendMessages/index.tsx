@@ -27,7 +27,7 @@ import type { Channel, User } from "discord-types/general";
 
 import { EditMessagesModal } from "./components/EditMessagesModal";
 import { ManageMessageModal } from "./components/ManageMessageModal";
-import { clearDataFromDataStore, getCachedData } from "./utils";
+import { clearDataFromDataStore, getCachedData, SavedData } from "./utils";
 
 interface UserContextProps {
     channel: Channel;
@@ -45,17 +45,42 @@ function handleMessage(message: string) {
     insertTextIntoChatInputBox(message);
 }
 
-function makeButton(user: User) {
+function makeUserContextButtons(user: User) {
     const cachedData = getCachedData();
     if (cachedData.length === 0) return (<></>);
+    const groups = {};
+    cachedData.forEach(meow => {
+        if (meow.group === null) return;
+        if (groups[meow.group.toLowerCase().replaceAll(" ", "-")] === undefined) groups[meow.group.toLowerCase().replaceAll(" ", "-")] = [];
+        groups[meow.group.toLowerCase().replaceAll(" ", "-")].push(meow);
+    });
     return (
         <Menu.MenuItem label="Quick Send Message" key="quick-send-messages" id="quick-send-messages" >
             {cachedData.map(meow => {
-                return (<Menu.MenuItem
-                    id={meow.label.toLowerCase().replaceAll(" ", "-")}
-                    label={meow.label}
-                    action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
-                />);
+                if (meow.group === null) {
+                    return (
+                        <Menu.MenuItem
+                            id={meow.label.toLowerCase().replaceAll(" ", "-")}
+                            label={meow.label}
+                            action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                        />
+                    );
+                }
+            })}
+            {Object.keys(groups).map(group => {
+                return (
+                    <Menu.MenuItem label={group} key={`quick-send-messages-group-${group}`} id={`quick-send-messages-group-${group}`}>
+                        {groups[group].map((meow: SavedData) => {
+                            return (
+                                <Menu.MenuItem
+                                    id={meow.label.toLowerCase().replaceAll(" ", "-")}
+                                    label={meow.label}
+                                    action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                                />
+                            );
+                        })}
+                    </Menu.MenuItem>
+                );
             })}
         </Menu.MenuItem>
     );
@@ -63,7 +88,7 @@ function makeButton(user: User) {
 
 const UserContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: UserContextProps) => {
     if (!user) return;
-    children.push(makeButton(user));
+    children.push(makeUserContextButtons(user));
 };
 
 
