@@ -27,7 +27,7 @@ import type { Channel, User } from "discord-types/general";
 
 import { EditMessagesModal } from "./components/EditMessagesModal";
 import { ManageMessageModal } from "./components/ManageMessageModal";
-import { clearDataFromDataStore, getCachedData, SavedData } from "./utils";
+import { clearDataFromDataStore, getCachedData, SavedMessageData } from "./utils";
 
 interface UserContextProps {
     channel: Channel;
@@ -35,47 +35,48 @@ interface UserContextProps {
     user: User;
 }
 
-function replaceVariables(template: string, variables: { [x: string]: string | number; }) {
+function replaceVariables(template: string, variables: { [x: string]: string | number; }): string {
     return template.replace(/\{(\w+)\}/g, (match: any, name: string) => !!variables[name] ? variables[name] : match);
 }
 
-function handleMessage(message: string) {
+function handleMessage(message: string): void {
     const channel = getCurrentChannel();
     if (channel && Settings.plugins.QuickSendMessages.autoSend) return sendMessage(channel.id, { content: message });
     insertTextIntoChatInputBox(message);
 }
 
-function makeUserContextButtons(user: User) {
+function makeUserContextButtons(user: User): React.JSX.Element {
     const cachedData = getCachedData();
     if (cachedData.length === 0) return (<></>);
-    const groups = {};
-    cachedData.forEach(meow => {
-        if (meow.group === null) return;
-        if (groups[meow.group.toLowerCase().replaceAll(" ", "-")] === undefined) groups[meow.group.toLowerCase().replaceAll(" ", "-")] = [];
-        groups[meow.group.toLowerCase().replaceAll(" ", "-")].push(meow);
+    const groups: { [key: string]: SavedMessageData[]; } = {};
+    cachedData.forEach(messageData => {
+        if (messageData.group === null) return;
+        const key = messageData.group.toLowerCase().replaceAll(" ", "-");
+        if (groups[key] === undefined) groups[key] = [];
+        groups[key].push(messageData);
     });
     return (
         <Menu.MenuItem label="Quick Send Message" key="quick-send-messages" id="quick-send-messages" >
-            {cachedData.map(meow => {
-                if (meow.group === null) {
+            {cachedData.map(messageData => {
+                if (messageData.group === null) {
                     return (
                         <Menu.MenuItem
-                            id={meow.label.toLowerCase().replaceAll(" ", "-")}
-                            label={meow.label}
-                            action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                            id={messageData.label.toLowerCase().replaceAll(" ", "-")}
+                            label={messageData.label}
+                            action={() => handleMessage(replaceVariables(messageData.message.replaceAll("\\n", "\n"), { userId: user.id }))}
                         />
                     );
                 }
             })}
-            {Object.keys(groups).map(group => {
+            {Object.keys(groups).map(groupData => {
                 return (
-                    <Menu.MenuItem label={group} key={`quick-send-messages-group-${group}`} id={`quick-send-messages-group-${group}`}>
-                        {groups[group].map((meow: SavedData) => {
+                    <Menu.MenuItem label={groupData} key={`quick-send-messages-group-${groupData}`} id={`quick-send-messages-group-${groupData}`}>
+                        {groups[groupData].map((messageData: SavedMessageData) => {
                             return (
                                 <Menu.MenuItem
-                                    id={meow.label.toLowerCase().replaceAll(" ", "-")}
-                                    label={meow.label}
-                                    action={() => handleMessage(replaceVariables(meow.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                                    id={messageData.label.toLowerCase().replaceAll(" ", "-")}
+                                    label={messageData.label}
+                                    action={() => handleMessage(replaceVariables(messageData.message.replaceAll("\\n", "\n"), { userId: user.id }))}
                                 />
                             );
                         })}

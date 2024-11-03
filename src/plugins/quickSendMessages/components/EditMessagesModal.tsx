@@ -23,22 +23,21 @@ import { getCachedData } from "../utils";
 import { ManageMessageModal } from "./ManageMessageModal";
 
 export function EditMessagesModal({ props }: { props: ModalProps; }) {
-    const buttons: any[] = [];
-
-    getCachedData().forEach(meow => {
-
+    const buttons: React.JSX.Element[] = [];
+    getCachedData().forEach(messageData => {
         buttons.push(
             <Button
                 onClick={() => openModal(props => (
                     <ManageMessageModal
                         props={props}
-                        title={`Editing ${meow.label}`}
-                        currentLabel={meow.label}
-                        currentMessage={meow.message}
+                        title={`Editing ${messageData.label}`}
+                        currentLabel={messageData.label}
+                        currentMessage={messageData.message}
+                        currentGroup={messageData.group || ""}
                         edit={true} />
                 ))}
                 style={{ marginTop: "10px" }}
-                color={Button.Colors.BRAND}>{`Edit ${meow.label}`}</Button>
+                color={Button.Colors.BRAND}>{`Edit ${messageData.label}`}</Button>
         );
     });
 
