@@ -22,30 +22,46 @@ import { Devs } from "@utils/constants";
 import { getCurrentChannel, insertTextIntoChatInputBox, sendMessage } from "@utils/discord";
 import { openModal } from "@utils/modal";
 import definePlugin, { OptionType } from "@utils/types";
-import { Button, Menu } from "@webpack/common";
-import type { Channel, User } from "discord-types/general";
+import { findByPropsLazy } from "@webpack";
+import { Button, FluxDispatcher, Menu, MessageActions } from "@webpack/common";
+import type { Message, User } from "discord-types/general";
 
 import { EditMessagesModal } from "./components/EditMessagesModal";
 import { ManageMessageModal } from "./components/ManageMessageModal";
 import { clearDataFromDataStore, getCachedData, SavedMessageData } from "./utils";
 
-interface UserContextProps {
-    channel: Channel;
-    guildId?: string;
-    user: User;
-}
-
 function replaceVariables(template: string, variables: { [x: string]: string | number; }): string {
     return template.replace(/\{(\w+)\}/g, (match: any, name: string) => !!variables[name] ? variables[name] : match);
 }
 
-function handleMessage(message: string): void {
+function handleMessage(message: string, replyData?: { message: Message; }): void {
     const channel = getCurrentChannel();
-    if (channel && Settings.plugins.QuickSendMessages.autoSend) return sendMessage(channel.id, { content: message });
-    insertTextIntoChatInputBox(message);
+    if (!channel) return;
+    if (replyData) {
+        FluxDispatcher.dispatch({
+            type: "CREATE_PENDING_REPLY",
+            channel,
+            message: replyData.message,
+            shouldMention: !Settings.plugins.NoReplyMention.enabled,
+            showMentionToggle: true,
+        });
+        const PendingReplyStore = findByPropsLazy("getPendingReply");
+        const reply = PendingReplyStore.getPendingReply(channel.id);
+        if (Settings.plugins.QuickSendMessages.autoSend) return sendMessage(channel.id, { content: message }, void 0, MessageActions.getSendMessageOptionsForReply(reply)).then(() => {
+            if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", channelId: channel.id });
+        });
+        insertTextIntoChatInputBox(message);
+    } else {
+        if (Settings.plugins.QuickSendMessages.autoSend) return sendMessage(channel.id, { content: message });
+        insertTextIntoChatInputBox(message);
+    }
 }
 
-function makeUserContextButtons(user: User): React.JSX.Element {
+function cleanMessage(message: string, user: User): string {
+    return replaceVariables(message.replaceAll("\\n", "\n"), { userId: user.id, userMention: `<@${user.id}>` });
+}
+
+function makeContextButtons(user: User, replyData?: { message: Message; }): React.JSX.Element {
     const cachedData = getCachedData();
     if (cachedData.length === 0) return (<></>);
     const groups: { [key: string]: SavedMessageData[]; } = {};
@@ -56,14 +72,14 @@ function makeUserContextButtons(user: User): React.JSX.Element {
         groups[key].push(messageData);
     });
     return (
-        <Menu.MenuItem label="Quick Send Message" key="quick-send-messages" id="quick-send-messages" >
+        <Menu.MenuItem label={`Quick Send Message${replyData ? " Reply" : ""}`} key="quick-send-messages" id="quick-send-messages" >
             {cachedData.map(messageData => {
                 if (messageData.group === null) {
                     return (
                         <Menu.MenuItem
                             id={messageData.label.toLowerCase().replaceAll(" ", "-")}
                             label={messageData.label}
-                            action={() => handleMessage(replaceVariables(messageData.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                            action={() => handleMessage(cleanMessage(messageData.message, user), replyData)}
                         />
                     );
                 }
@@ -76,7 +92,7 @@ function makeUserContextButtons(user: User): React.JSX.Element {
                                 <Menu.MenuItem
                                     id={messageData.label.toLowerCase().replaceAll(" ", "-")}
                                     label={messageData.label}
-                                    action={() => handleMessage(replaceVariables(messageData.message.replaceAll("\\n", "\n"), { userId: user.id }))}
+                                    action={() => handleMessage(cleanMessage(messageData.message, user), replyData)}
                                 />
                             );
                         })}
@@ -87,9 +103,14 @@ function makeUserContextButtons(user: User): React.JSX.Element {
     );
 }
 
-const UserContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: UserContextProps) => {
+const UserContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: { user: User; }): void => {
     if (!user) return;
-    children.push(makeUserContextButtons(user));
+    children.push(makeContextButtons(user));
+};
+
+const MessageContextMenuPatch: NavContextMenuPatchCallback = (children, { message }: { message: Message; }): void => {
+    if (!message || !message.author) return;
+    children.push(makeContextButtons(message.author, { message }));
 };
 
 
@@ -115,7 +136,7 @@ const settings = definePluginSettings({
 export default definePlugin({
     name: "QuickSendMessages",
     authors: [Devs.Kathund],
-    description: "Adds Message shortcuts to the user context menu.",
+    description: "Adds Message shortcuts to the user and message context menu.",
     dependencies: ["UserSettingsAPI"],
     settings,
     options: {
@@ -127,6 +148,7 @@ export default definePlugin({
         }
     },
     contextMenus: {
+        "message": MessageContextMenuPatch,
         "user-context": UserContextMenuPatch
     }
 });

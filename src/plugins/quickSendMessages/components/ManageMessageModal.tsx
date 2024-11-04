@@ -48,6 +48,8 @@ export function ManageMessageModal({ props, title, currentLabel, currentMessage,
             </ModalContent>
             <ModalContent>
                 <Forms.FormTitle tag="h5" style={{ marginTop: "10px" }}>Button Message (Required)</Forms.FormTitle>
+                <Forms.FormText style={{ marginTop: "10px", marginBottom: "10px" }}>{"You can use {userId} to get there user id"}</Forms.FormText>
+                <Forms.FormText style={{ marginTop: "10px", marginBottom: "10px" }}>{"You can use {userMention} to mention the user"}</Forms.FormText>
                 <TextInput style={{ marginBottom: "10px" }} placeholder={"Message to be sent"} value={message} onChange={setMessage} />
             </ModalContent>
             <ModalContent>
